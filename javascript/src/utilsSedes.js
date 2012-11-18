@@ -14,7 +14,8 @@ var googleMapsUtils = {
 // funcion que toma los datos recibidos del servidor y los procesa segun logica de negocio
 function generateData3(result){        
         var data = [];
-        result.reverse();
+        //var resultLength = result.length - 1;
+        //result.reverse();
         var firstData = null;
         var maximoDatos = 2
         var datosIncluidos = 0;
@@ -24,11 +25,12 @@ function generateData3(result){
                }
                
                // de los datos traidos del servidor se evalua cual esta en intervalos de 16 minutos
-               if((((firstData.timestamp - result[index].timestamp) % (16*60*1000)) == 0) && (datosIncluidos<maximoDatos)){                   
-                   var timestamp = result[index].timestamp
+               //if((((firstData.timestamp - result[index].timestamp) % (16*60*1000)) == 0) && (datosIncluidos<maximoDatos)){
+               if(datosIncluidos<maximoDatos){                   
+                   var timestamp = result[maximoDatos-1-index].timestamp
                    var date = new Date(timestamp);
-                   var dateString = date.getHours() + ':' + date.getMinutes();                   
-                   data.push(new Data(dateString, parseInt(result[index].value)));
+                   var dateString = date.getFullYear() + '/' + date.getMonth() + '/' + date.getDate() + ' ' + date.getHours() + ':' + date.getMinutes();                   
+                   data.push(new Data(dateString, parseInt(result[maximoDatos-1-index].value)));
                    datosIncluidos++;
                
                }               
@@ -72,101 +74,77 @@ var sedesUtils = {
         var myMarker = googleMapsUtils.nuevoMarcador(myLatlng,map,name);               
           
            google.maps.event.addListener(myMarker, 'click', function(){
-          
-           store2.removeAll(true);
-           obtenerDatosGeneracionActual(name);
+               
+               var chart15min = Ext.create('Ubidots.GenChart');
+               var chart1h    = Ext.create('Ubidots.GenChart');
+               var chart1d    = Ext.create('Ubidots.GenChart');                
+                                                        
      
-     // panel que va a contener el gráfico                                                            
-     var panel1 = Ext.create('widget.panel', {
-        width : 480
-        ,height: 310
-        ,x:0,
-        y:0,
+     var tabs = Ext.create('Ext.tab.Panel', {
+        //renderTo: 'tabs1',        
         //title: 'Diagrama Inicial',
         layout: 'fit',
-        items:{
-            xtype: 'chart',
-            animate: true,            
-            shadow: true,
-            store: store2,
-            axes: [{
-                type: 'Numeric',
-                position: 'left',
-                fields: ['value'],
-                title: 'Megavatios por hora',
-                grid: true,
-                minimum: 0
-            }, {
-                type: 'Category',
-                position: 'bottom',
-                fields: ['timestamp'],
-                title: 'Horas',
-                label: {
-                    rotate: {
-                        degrees: 0
+        activeTab: 0,
+        defaults :{
+          bodyPadding: 10
+        },
+        items: [{
+            //contentEl:'script', 
+            title: 'last 15 min'//,
+            ,
+                listeners: {
+                    activate: function(tab){
+                        //console.log("hola");
+                        store2.removeAll(true);
+                         //obtenerDatosGeneracionActual(name);
+                         obtenerDatosGeneracionActual(name+'15min');    
                     }
                 }
-            }]            
-                              
-            ,series: [{
-                type: 'column',
-                axis: 'left',
-                gutter: 80,
-                xField: 'timestamp',
-                yField: ['value'],
-                label: {
-                  display: 'outside',
-                  'text-anchor': 'middle',
-                    field: 'value',
-                    renderer: Ext.util.Format.numberRenderer('0'),
-                    orientation: 'horizontal'
-                    //,color: '#333'
-                },
-                tips: {
-                    //trackMouse: true,
-                    width: 74,
-                    height: 38
-                    /*,
-                    renderer: function(storeItem, item) {
-                        this.setTitle(storeItem.get('value'));
-                    }*/
-                    
-                },renderer: function(sprite, record, attr, index, store) {
-                         // default color
-                         var color = '#38B8BF';
-                         // set title to column
-                         this.setTitle(record.data.value);             
-                         // eval the color of the last column comparing the previous column value                        
-                         if((store.data.items.length > 1) && (index == store.data.items.length - 1) ){                              
-                              var currentValue = record.data.value;
-                              var previousValue = store.data.items[index-1].data.value;
-                              
-                              if(currentValue > previousValue){
-                                   color = "green"
-                              }else if(currentValue == previousValue){
-                                   color = "yellow"
-                              }else{
-                                   color = "red"
-                              }                                                                                                              
-                         }
-                         return Ext.apply(attr, {
-                                   fill: color
-                                   }); 
-                                                       
+            ,items:[chart15min]
+            //closable: true
+        },{
+            //contentEl:'script', 
+            title: 'last hour'//,
+            ,items:[chart1h]
+            ,
+                listeners: {
+                    activate: function(tab){
+                        //console.log("hola");
+                        store2.removeAll(true);
+                         //obtenerDatosGeneracionActual(name);
+                         obtenerDatosGeneracionActual(name+'1h');    
                     }
-            }]
-        }
-    });     
+                }   
+            //closable: true
+        },{
+            //contentEl:'script', 
+            title: 'last day'//,
+            ,items:[chart1d]
+            ,
+                listeners: {
+                    activate: function(tab){
+                        //console.log("hola");
+                        store2.removeAll(true);
+                         //obtenerDatosGeneracionActual(name);
+                         obtenerDatosGeneracionActual(name+'1d');    
+                    }
+                }   
+            //closable: true
+        }]
+    });
                
                // modal window que contiene el trafico
                var myWindow = Ext.create("Ext.Window",{
                                 width : 500
                                 ,height: 350
-                                ,title : name                                
+                                ,title : name
+                                ,resizable   : false
                                 ,layout: 'absolute'
                                 ,closable : true
                                 ,modal:true
-                                ,items:[panel1]
+                                ,items:[tabs]
+                                
+                                //,items:[panel1]
                             }).show();
           });
                       
@@ -191,7 +169,8 @@ function obtenerIdVariableByNombre(result, nombreVariable){
                break;
           }
     }
-    
+    console.log("returnVariableId")
+    console.log(returnVariableId)
     get_values_callback(returnVariableId, cargarDatosEnGrafico);    
 }
 
